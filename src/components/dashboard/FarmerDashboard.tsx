@@ -2,6 +2,9 @@ import { useEffect, useState } from "react";
 import { supabase } from "@/integrations/supabase/client";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
+import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
+import { ListingForm } from "@/components/listings/ListingForm";
+import { ListingCard } from "@/components/listings/ListingCard";
 import { Plus, Sprout, Package, TrendingUp } from "lucide-react";
 
 interface FarmerDashboardProps {
@@ -14,10 +17,14 @@ const FarmerDashboard = ({ userId }: FarmerDashboardProps) => {
     activeOrders: 0,
     totalRevenue: 0,
   });
+  const [showListingForm, setShowListingForm] = useState(false);
+  const [farmerId, setFarmerId] = useState<string>("");
+  const [listings, setListings] = useState<any[]>([]);
 
   useEffect(() => {
     if (userId) {
       fetchStats();
+      fetchListings();
     }
   }, [userId]);
 
@@ -31,6 +38,7 @@ const FarmerDashboard = ({ userId }: FarmerDashboardProps) => {
         .single();
 
       if (!farmerData) return;
+      setFarmerId(farmerData.id);
 
       // Get listings count
       const { count: listingsCount } = await supabase
@@ -44,6 +52,35 @@ const FarmerDashboard = ({ userId }: FarmerDashboardProps) => {
     }
   };
 
+  const fetchListings = async () => {
+    try {
+      const { data: farmerData } = await supabase
+        .from("farmers")
+        .select("id")
+        .eq("user_id", userId)
+        .single();
+
+      if (!farmerData) return;
+
+      const { data, error } = await supabase
+        .from("listings")
+        .select("*")
+        .eq("farmer_id", farmerData.id)
+        .order("created_at", { ascending: false });
+
+      if (error) throw error;
+      setListings(data || []);
+    } catch (error) {
+      console.error("Error fetching listings:", error);
+    }
+  };
+
+  const handleListingSuccess = () => {
+    setShowListingForm(false);
+    fetchStats();
+    fetchListings();
+  };
+
   return (
     <div className="space-y-6">
       <div className="flex items-center justify-between">
@@ -51,7 +88,7 @@ const FarmerDashboard = ({ userId }: FarmerDashboardProps) => {
           <h2 className="text-3xl font-bold text-foreground">Farmer Dashboard</h2>
           <p className="text-muted-foreground mt-1">Manage your produce and orders</p>
         </div>
-        <Button className="bg-gradient-earth shadow-accent">
+        <Button onClick={() => setShowListingForm(true)} className="bg-gradient-earth shadow-accent">
           <Plus className="w-4 h-4 mr-2" />
           New Listing
         </Button>
@@ -86,13 +123,35 @@ const FarmerDashboard = ({ userId }: FarmerDashboardProps) => {
           <CardDescription>Manage your produce offerings</CardDescription>
         </CardHeader>
         <CardContent>
-          <div className="text-center py-12 text-muted-foreground">
-            <Package className="w-16 h-16 mx-auto mb-4 opacity-50" />
-            <p className="text-lg mb-2">No listings yet</p>
-            <p className="text-sm">Create your first listing to start selling!</p>
-          </div>
+          {listings.length > 0 ? (
+            <div className="grid md:grid-cols-2 lg:grid-cols-3 gap-4">
+              {listings.map((listing) => (
+                <ListingCard
+                  key={listing.id}
+                  listing={listing}
+                  showActions={false}
+                />
+              ))}
+            </div>
+          ) : (
+            <div className="text-center py-12 text-muted-foreground">
+              <Package className="w-16 h-16 mx-auto mb-4 opacity-50" />
+              <p className="text-lg mb-2">No listings yet</p>
+              <p className="text-sm">Create your first listing to start selling!</p>
+            </div>
+          )}
         </CardContent>
       </Card>
+
+      {/* New Listing Dialog */}
+      <Dialog open={showListingForm} onOpenChange={setShowListingForm}>
+        <DialogContent className="max-w-2xl max-h-[90vh] overflow-y-auto">
+          <DialogHeader>
+            <DialogTitle>Create New Listing</DialogTitle>
+          </DialogHeader>
+          <ListingForm farmerId={farmerId} onSuccess={handleListingSuccess} />
+        </DialogContent>
+      </Dialog>
     </div>
   );
 };

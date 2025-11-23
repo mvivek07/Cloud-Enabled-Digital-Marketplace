@@ -1,7 +1,9 @@
 import { useEffect, useState } from "react";
+import { useNavigate } from "react-router-dom";
 import { supabase } from "@/integrations/supabase/client";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
+import { ListingCard } from "@/components/listings/ListingCard";
 import { Search, ShoppingCart, Package, TrendingDown } from "lucide-react";
 
 interface BuyerDashboardProps {
@@ -9,15 +11,18 @@ interface BuyerDashboardProps {
 }
 
 const BuyerDashboard = ({ userId }: BuyerDashboardProps) => {
+  const navigate = useNavigate();
   const [stats, setStats] = useState({
     activeOrders: 0,
     totalOrders: 0,
     foodSaved: 0,
   });
+  const [listings, setListings] = useState<any[]>([]);
 
   useEffect(() => {
     if (userId) {
       fetchStats();
+      fetchListings();
     }
   }, [userId]);
 
@@ -44,6 +49,22 @@ const BuyerDashboard = ({ userId }: BuyerDashboardProps) => {
     }
   };
 
+  const fetchListings = async () => {
+    try {
+      const { data, error } = await supabase
+        .from("listings")
+        .select("*")
+        .eq("status", "available")
+        .order("created_at", { ascending: false })
+        .limit(6);
+
+      if (error) throw error;
+      setListings(data || []);
+    } catch (error) {
+      console.error("Error fetching listings:", error);
+    }
+  };
+
   return (
     <div className="space-y-6">
       <div className="flex items-center justify-between">
@@ -51,7 +72,7 @@ const BuyerDashboard = ({ userId }: BuyerDashboardProps) => {
           <h2 className="text-3xl font-bold text-foreground">Buyer Dashboard</h2>
           <p className="text-muted-foreground mt-1">Browse fresh local produce</p>
         </div>
-        <Button className="bg-gradient-earth shadow-accent">
+        <Button onClick={() => navigate("/listings")} className="bg-gradient-earth shadow-accent">
           <Search className="w-4 h-4 mr-2" />
           Browse Listings
         </Button>
@@ -81,16 +102,34 @@ const BuyerDashboard = ({ userId }: BuyerDashboardProps) => {
 
       {/* Available Produce */}
       <Card className="shadow-medium">
-        <CardHeader>
-          <CardTitle>Available Produce</CardTitle>
-          <CardDescription>Fresh from local farms</CardDescription>
+        <CardHeader className="flex flex-row items-center justify-between">
+          <div>
+            <CardTitle>Available Produce</CardTitle>
+            <CardDescription>Fresh listings from local farmers</CardDescription>
+          </div>
+          <Button variant="outline" onClick={() => navigate("/listings")}>
+            <Search className="w-4 h-4 mr-2" />
+            Browse All
+          </Button>
         </CardHeader>
         <CardContent>
-          <div className="text-center py-12 text-muted-foreground">
-            <Package className="w-16 h-16 mx-auto mb-4 opacity-50" />
-            <p className="text-lg mb-2">No produce available</p>
-            <p className="text-sm">Check back soon for fresh listings!</p>
-          </div>
+          {listings.length > 0 ? (
+            <div className="grid md:grid-cols-2 lg:grid-cols-3 gap-4">
+              {listings.map((listing) => (
+                <ListingCard
+                  key={listing.id}
+                  listing={listing}
+                  onViewDetails={() => navigate("/listings")}
+                />
+              ))}
+            </div>
+          ) : (
+            <div className="text-center py-12 text-muted-foreground">
+              <Package className="w-16 h-16 mx-auto mb-4 opacity-50" />
+              <p className="text-lg mb-2">No produce available</p>
+              <p className="text-sm">Check back soon for fresh listings!</p>
+            </div>
+          )}
         </CardContent>
       </Card>
     </div>
