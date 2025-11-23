@@ -5,7 +5,7 @@ import { Package, MapPin, Clock, DollarSign, Check, Truck } from "lucide-react";
 import { format } from "date-fns";
 import { supabase } from "@/integrations/supabase/client";
 import { toast } from "sonner";
-import { useState } from "react";
+import { useState, useEffect } from "react";
 
 interface OrderCardProps {
   order: any;
@@ -15,6 +15,44 @@ interface OrderCardProps {
 
 export const OrderCard = ({ order, type, onUpdate }: OrderCardProps) => {
   const [loading, setLoading] = useState(false);
+
+  // Auto-complete order when pickup time is reached
+  useEffect(() => {
+    if (type === "buyer" && order.status === "confirmed" && order.pickup_time) {
+      const checkDelivery = () => {
+        const now = new Date();
+        const pickupTime = new Date(order.pickup_time);
+        
+        if (now >= pickupTime) {
+          handleAutoComplete();
+        }
+      };
+
+      const handleAutoComplete = async () => {
+        try {
+          const { error } = await supabase
+            .from("orders")
+            .update({ status: "completed" })
+            .eq("id", order.id);
+
+          if (!error) {
+            toast.success("Order delivered successfully!");
+            onUpdate?.();
+          }
+        } catch (error) {
+          console.error("Failed to auto-complete order:", error);
+        }
+      };
+
+      // Check immediately
+      checkDelivery();
+
+      // Then check every minute
+      const interval = setInterval(checkDelivery, 60000);
+
+      return () => clearInterval(interval);
+    }
+  }, [order.id, order.status, order.pickup_time, type, onUpdate]);
 
   const handleApprove = async () => {
     setLoading(true);
@@ -128,9 +166,18 @@ export const OrderCard = ({ order, type, onUpdate }: OrderCardProps) => {
         )}
 
         {order.pickup_time && (
-          <div className="flex items-center gap-2 text-sm text-muted-foreground">
+          <div className={`flex items-center gap-2 text-sm ${
+            type === "buyer" && order.status === "confirmed" 
+              ? "text-primary font-medium" 
+              : "text-muted-foreground"
+          }`}>
             <Clock className="w-4 h-4" />
-            <span>Est. {format(new Date(order.pickup_time), "MMM dd, h:mm a")}</span>
+            <span>
+              {type === "buyer" && order.status === "confirmed" 
+                ? `Arriving: ${format(new Date(order.pickup_time), "MMM dd, h:mm a")}`
+                : `Est. ${format(new Date(order.pickup_time), "MMM dd, h:mm a")}`
+              }
+            </span>
           </div>
         )}
 
