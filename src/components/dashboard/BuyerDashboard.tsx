@@ -4,6 +4,7 @@ import { supabase } from "@/integrations/supabase/client";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { ListingCard } from "@/components/listings/ListingCard";
+import { OrderCard } from "@/components/orders/OrderCard";
 import { Search, ShoppingCart, Package, TrendingDown } from "lucide-react";
 
 interface BuyerDashboardProps {
@@ -18,11 +19,13 @@ const BuyerDashboard = ({ userId }: BuyerDashboardProps) => {
     foodSaved: 0,
   });
   const [listings, setListings] = useState<any[]>([]);
+  const [orders, setOrders] = useState<any[]>([]);
 
   useEffect(() => {
     if (userId) {
       fetchStats();
       fetchListings();
+      fetchOrders();
     }
   }, [userId]);
 
@@ -43,9 +46,43 @@ const BuyerDashboard = ({ userId }: BuyerDashboardProps) => {
         .select("*", { count: "exact", head: true })
         .eq("buyer_id", buyerData.id);
 
-      setStats(prev => ({ ...prev, totalOrders: ordersCount || 0 }));
+      const { count: activeCount } = await supabase
+        .from("orders")
+        .select("*", { count: "exact", head: true })
+        .eq("buyer_id", buyerData.id)
+        .in("status", ["pending", "confirmed"]);
+
+      setStats(prev => ({ 
+        ...prev, 
+        totalOrders: ordersCount || 0,
+        activeOrders: activeCount || 0
+      }));
     } catch (error) {
       console.error("Error fetching stats:", error);
+    }
+  };
+
+  const fetchOrders = async () => {
+    try {
+      const { data: buyerData } = await supabase
+        .from("buyers")
+        .select("id")
+        .eq("user_id", userId)
+        .single();
+
+      if (!buyerData) return;
+
+      const { data, error } = await supabase
+        .from("orders")
+        .select("*, listing:listings(*)")
+        .eq("buyer_id", buyerData.id)
+        .order("created_at", { ascending: false })
+        .limit(6);
+
+      if (error) throw error;
+      setOrders(data || []);
+    } catch (error) {
+      console.error("Error fetching orders:", error);
     }
   };
 
@@ -99,6 +136,29 @@ const BuyerDashboard = ({ userId }: BuyerDashboardProps) => {
           color="secondary"
         />
       </div>
+
+      {/* My Orders */}
+      <Card className="shadow-medium">
+        <CardHeader>
+          <CardTitle>My Orders</CardTitle>
+          <CardDescription>Track your recent purchases</CardDescription>
+        </CardHeader>
+        <CardContent>
+          {orders.length > 0 ? (
+            <div className="grid md:grid-cols-2 lg:grid-cols-3 gap-4">
+              {orders.map((order) => (
+                <OrderCard key={order.id} order={order} type="buyer" />
+              ))}
+            </div>
+          ) : (
+            <div className="text-center py-12 text-muted-foreground">
+              <ShoppingCart className="w-16 h-16 mx-auto mb-4 opacity-50" />
+              <p className="text-lg mb-2">No orders yet</p>
+              <p className="text-sm">Start browsing to place your first order!</p>
+            </div>
+          )}
+        </CardContent>
+      </Card>
 
       {/* Available Produce */}
       <Card className="shadow-medium">

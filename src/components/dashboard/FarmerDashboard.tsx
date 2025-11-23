@@ -5,6 +5,7 @@ import { Button } from "@/components/ui/button";
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { ListingForm } from "@/components/listings/ListingForm";
 import { ListingCard } from "@/components/listings/ListingCard";
+import { OrderCard } from "@/components/orders/OrderCard";
 import { Plus, Sprout, Package, TrendingUp } from "lucide-react";
 
 interface FarmerDashboardProps {
@@ -20,11 +21,13 @@ const FarmerDashboard = ({ userId }: FarmerDashboardProps) => {
   const [showListingForm, setShowListingForm] = useState(false);
   const [farmerId, setFarmerId] = useState<string>("");
   const [listings, setListings] = useState<any[]>([]);
+  const [orders, setOrders] = useState<any[]>([]);
 
   useEffect(() => {
     if (userId) {
       fetchStats();
       fetchListings();
+      fetchOrders();
     }
   }, [userId]);
 
@@ -46,9 +49,44 @@ const FarmerDashboard = ({ userId }: FarmerDashboardProps) => {
         .select("*", { count: "exact", head: true })
         .eq("farmer_id", farmerData.id);
 
-      setStats(prev => ({ ...prev, totalListings: listingsCount || 0 }));
+      // Get active orders for this farmer's listings
+      const { data: ordersData } = await supabase
+        .from("orders")
+        .select("*, listing:listings!inner(*)")
+        .eq("listing.farmer_id", farmerData.id)
+        .in("status", ["pending", "confirmed"]);
+
+      setStats(prev => ({ 
+        ...prev, 
+        totalListings: listingsCount || 0,
+        activeOrders: ordersData?.length || 0
+      }));
     } catch (error) {
       console.error("Error fetching stats:", error);
+    }
+  };
+
+  const fetchOrders = async () => {
+    try {
+      const { data: farmerData } = await supabase
+        .from("farmers")
+        .select("id")
+        .eq("user_id", userId)
+        .single();
+
+      if (!farmerData) return;
+
+      const { data, error } = await supabase
+        .from("orders")
+        .select("*, listing:listings!inner(*)")
+        .eq("listing.farmer_id", farmerData.id)
+        .order("created_at", { ascending: false })
+        .limit(6);
+
+      if (error) throw error;
+      setOrders(data || []);
+    } catch (error) {
+      console.error("Error fetching orders:", error);
     }
   };
 
@@ -79,6 +117,7 @@ const FarmerDashboard = ({ userId }: FarmerDashboardProps) => {
     setShowListingForm(false);
     fetchStats();
     fetchListings();
+    fetchOrders();
   };
 
   return (
@@ -115,6 +154,29 @@ const FarmerDashboard = ({ userId }: FarmerDashboardProps) => {
           color="secondary"
         />
       </div>
+
+      {/* Incoming Orders */}
+      <Card className="shadow-medium">
+        <CardHeader>
+          <CardTitle>Incoming Orders</CardTitle>
+          <CardDescription>Orders from buyers</CardDescription>
+        </CardHeader>
+        <CardContent>
+          {orders.length > 0 ? (
+            <div className="grid md:grid-cols-2 lg:grid-cols-3 gap-4">
+              {orders.map((order) => (
+                <OrderCard key={order.id} order={order} type="farmer" />
+              ))}
+            </div>
+          ) : (
+            <div className="text-center py-12 text-muted-foreground">
+              <Sprout className="w-16 h-16 mx-auto mb-4 opacity-50" />
+              <p className="text-lg mb-2">No orders yet</p>
+              <p className="text-sm">Orders will appear here when buyers place them</p>
+            </div>
+          )}
+        </CardContent>
+      </Card>
 
       {/* Recent Listings */}
       <Card className="shadow-medium">
