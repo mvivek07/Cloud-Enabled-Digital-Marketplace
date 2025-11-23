@@ -5,7 +5,7 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/com
 import { Button } from "@/components/ui/button";
 import { ListingCard } from "@/components/listings/ListingCard";
 import { OrderCard } from "@/components/orders/OrderCard";
-import { Search, ShoppingCart, Package, TrendingDown } from "lucide-react";
+import { Search, ShoppingCart, Package, TrendingDown, Heart } from "lucide-react";
 
 interface BuyerDashboardProps {
   userId?: string;
@@ -109,10 +109,16 @@ const BuyerDashboard = ({ userId }: BuyerDashboardProps) => {
           <h2 className="text-3xl font-bold text-foreground">Buyer Dashboard</h2>
           <p className="text-muted-foreground mt-1">Browse fresh local produce</p>
         </div>
-        <Button onClick={() => navigate("/listings")} className="bg-gradient-earth shadow-accent">
-          <Search className="w-4 h-4 mr-2" />
-          Browse Listings
-        </Button>
+        <div className="flex gap-2">
+          <Button onClick={() => navigate("/favorites")} variant="outline">
+            <Heart className="w-4 h-4 mr-2" />
+            Favorites
+          </Button>
+          <Button onClick={() => navigate("/listings")} className="bg-gradient-earth shadow-accent">
+            <Search className="w-4 h-4 mr-2" />
+            Browse Listings
+          </Button>
+        </div>
       </div>
 
       {/* Stats Grid */}

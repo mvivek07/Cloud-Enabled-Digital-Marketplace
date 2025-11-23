@@ -3,10 +3,12 @@ import { supabase } from "@/integrations/supabase/client";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
+import { Switch } from "@/components/ui/switch";
+import { Label } from "@/components/ui/label";
 import { ListingForm } from "@/components/listings/ListingForm";
 import { ListingCard } from "@/components/listings/ListingCard";
 import { OrderCard } from "@/components/orders/OrderCard";
-import { Plus, Sprout, Package, TrendingUp, Trash2 } from "lucide-react";
+import { Plus, Sprout, Package, TrendingUp, Trash2, XCircle } from "lucide-react";
 import { toast } from "sonner";
 import {
   AlertDialog,
@@ -158,6 +160,25 @@ const FarmerDashboard = ({ userId }: FarmerDashboardProps) => {
     fetchOrders();
   };
 
+  const toggleStockStatus = async (listingId: string, currentStatus: string) => {
+    try {
+      const newStatus = currentStatus === "available" ? "out_of_stock" : "available";
+      
+      const { error } = await supabase
+        .from("listings")
+        .update({ status: newStatus })
+        .eq("id", listingId);
+
+      if (error) throw error;
+
+      toast.success(newStatus === "out_of_stock" ? "Marked as out of stock" : "Marked as available");
+      fetchListings();
+      fetchStats();
+    } catch (error) {
+      toast.error("Failed to update stock status");
+    }
+  };
+
   return (
     <div className="space-y-6">
       <div className="flex items-center justify-between">
@@ -226,19 +247,34 @@ const FarmerDashboard = ({ userId }: FarmerDashboardProps) => {
           {listings.length > 0 ? (
             <div className="grid md:grid-cols-2 lg:grid-cols-3 gap-4">
               {listings.map((listing) => (
-                <div key={listing.id} className="relative group">
-                  <ListingCard
-                    listing={listing}
-                    showActions={false}
-                  />
-                  <Button
-                    variant="destructive"
-                    size="icon"
-                    className="absolute top-2 right-2 opacity-0 group-hover:opacity-100 transition-opacity shadow-lg"
-                    onClick={() => setDeleteListingId(listing.id)}
-                  >
-                    <Trash2 className="w-4 h-4" />
-                  </Button>
+                <div key={listing.id} className="space-y-2">
+                  <div className="relative group">
+                    <ListingCard
+                      listing={listing}
+                      showActions={false}
+                    />
+                    <Button
+                      variant="destructive"
+                      size="icon"
+                      className="absolute top-2 right-2 opacity-0 group-hover:opacity-100 transition-opacity shadow-lg"
+                      onClick={() => setDeleteListingId(listing.id)}
+                    >
+                      <Trash2 className="w-4 h-4" />
+                    </Button>
+                  </div>
+                  <div className="flex items-center justify-between bg-muted/50 rounded-lg p-3">
+                    <div className="flex items-center gap-2">
+                      <XCircle className="w-4 h-4 text-muted-foreground" />
+                      <Label htmlFor={`stock-${listing.id}`} className="text-sm font-medium cursor-pointer">
+                        {listing.status === "out_of_stock" ? "Out of Stock" : "In Stock"}
+                      </Label>
+                    </div>
+                    <Switch
+                      id={`stock-${listing.id}`}
+                      checked={listing.status === "available"}
+                      onCheckedChange={() => toggleStockStatus(listing.id, listing.status)}
+                    />
+                  </div>
                 </div>
               ))}
             </div>
