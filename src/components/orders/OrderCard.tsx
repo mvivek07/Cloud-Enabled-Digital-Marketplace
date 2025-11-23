@@ -55,6 +55,12 @@ export const OrderCard = ({ order, type, onUpdate }: OrderCardProps) => {
         const now = new Date();
         const pickupTime = new Date(order.pickup_time);
         
+        console.log("Checking delivery:", { 
+          now: now.toISOString(), 
+          pickupTime: pickupTime.toISOString(),
+          shouldComplete: now >= pickupTime 
+        });
+        
         if (now >= pickupTime) {
           handleAutoComplete();
         }
@@ -67,10 +73,13 @@ export const OrderCard = ({ order, type, onUpdate }: OrderCardProps) => {
             .update({ status: "completed" })
             .eq("id", order.id);
 
-          if (!error) {
-            toast.success("Order delivered successfully!");
-            onUpdate?.();
+          if (error) {
+            console.error("Error auto-completing order:", error);
+            return;
           }
+
+          toast.success("Order delivered successfully!");
+          onUpdate?.();
         } catch (error) {
           console.error("Failed to auto-complete order:", error);
         }
@@ -79,8 +88,8 @@ export const OrderCard = ({ order, type, onUpdate }: OrderCardProps) => {
       // Check immediately
       checkDelivery();
 
-      // Then check every minute
-      const interval = setInterval(checkDelivery, 60000);
+      // Then check every 30 seconds for faster updates
+      const interval = setInterval(checkDelivery, 30000);
 
       return () => clearInterval(interval);
     }
