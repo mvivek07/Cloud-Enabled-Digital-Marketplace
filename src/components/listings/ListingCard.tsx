@@ -1,7 +1,7 @@
 import { Card, CardContent, CardFooter, CardHeader } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
-import { MapPin, Calendar, Star, Package } from "lucide-react";
+import { MapPin, Calendar, Star, Package, CheckCircle } from "lucide-react";
 import { format } from "date-fns";
 
 interface ListingCardProps {
@@ -18,6 +18,10 @@ interface ListingCardProps {
     status: string | null;
     cosmetic_notes: string | null;
     created_at: string;
+    farmer?: {
+      farm_name: string;
+      verified: boolean | null;
+    } | null;
   };
   onViewDetails?: (id: string) => void;
   showActions?: boolean;
@@ -47,6 +51,14 @@ export const ListingCard = ({ listing, onViewDetails, showActions = true }: List
 
       <CardHeader className="pb-3">
         <h3 className="text-xl font-bold text-foreground line-clamp-1">{listing.title}</h3>
+        {listing.farmer && (
+          <div className="flex items-center gap-2 mt-1 text-sm text-muted-foreground">
+            <span>{listing.farmer.farm_name}</span>
+            {listing.farmer.verified && (
+              <CheckCircle className="w-4 h-4 text-primary" />
+            )}
+          </div>
+        )}
         <div className="flex items-center justify-between mt-2">
           <div className="text-2xl font-bold text-primary">
             ${listing.price_per_unit.toFixed(2)}
