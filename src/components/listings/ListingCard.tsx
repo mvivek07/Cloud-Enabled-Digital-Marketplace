@@ -1,10 +1,12 @@
 import { useEffect, useState } from "react";
+import { useNavigate } from "react-router-dom";
 import { Card, CardContent, CardFooter, CardHeader } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
-import { MapPin, Calendar, Star, Package, CheckCircle, User } from "lucide-react";
+import { MapPin, Calendar, Star, Package, CheckCircle, User, Heart } from "lucide-react";
 import { format } from "date-fns";
 import { supabase } from "@/integrations/supabase/client";
+import { toast } from "sonner";
 
 interface ListingCardProps {
   listing: {
@@ -31,13 +33,28 @@ interface ListingCardProps {
 }
 
 export const ListingCard = ({ listing, onViewDetails, showActions = true }: ListingCardProps) => {
+  const navigate = useNavigate();
   const totalPrice = listing.quantity * listing.price_per_unit;
   const mainPhoto = listing.photos && listing.photos.length > 0 ? listing.photos[0] : "/placeholder.svg";
   const [farmerRating, setFarmerRating] = useState<{ avg: number; count: number } | null>(null);
+  const [isFavorite, setIsFavorite] = useState(false);
+  const [currentUserId, setCurrentUserId] = useState<string>("");
 
   useEffect(() => {
+    fetchCurrentUser();
     fetchFarmerRating();
   }, [listing.farmer_id]);
+
+  useEffect(() => {
+    if (currentUserId) {
+      checkFavoriteStatus();
+    }
+  }, [currentUserId, listing.id]);
+
+  const fetchCurrentUser = async () => {
+    const { data: { user } } = await supabase.auth.getUser();
+    if (user) setCurrentUserId(user.id);
+  };
 
   const fetchFarmerRating = async () => {
     try {
@@ -52,6 +69,54 @@ export const ListingCard = ({ listing, onViewDetails, showActions = true }: List
       }
     } catch (error) {
       console.error("Error fetching farmer rating:", error);
+    }
+  };
+
+  const checkFavoriteStatus = async () => {
+    try {
+      const { data } = await supabase
+        .from("favorites")
+        .select("id")
+        .eq("user_id", currentUserId)
+        .eq("listing_id", listing.id)
+        .maybeSingle();
+
+      setIsFavorite(!!data);
+    } catch (error) {
+      console.error("Error checking favorite status:", error);
+    }
+  };
+
+  const toggleFavorite = async (e: React.MouseEvent) => {
+    e.stopPropagation();
+    if (!currentUserId) {
+      toast.error("Please log in to add favorites");
+      return;
+    }
+
+    try {
+      if (isFavorite) {
+        await supabase
+          .from("favorites")
+          .delete()
+          .eq("user_id", currentUserId)
+          .eq("listing_id", listing.id);
+        
+        toast.success("Removed from favorites");
+        setIsFavorite(false);
+      } else {
+        await supabase
+          .from("favorites")
+          .insert({
+            user_id: currentUserId,
+            listing_id: listing.id,
+          });
+        
+        toast.success("Added to favorites");
+        setIsFavorite(true);
+      }
+    } catch (error: any) {
+      toast.error(error.message || "Failed to update favorites");
     }
   };
 
@@ -71,6 +136,19 @@ export const ListingCard = ({ listing, onViewDetails, showActions = true }: List
             Available
           </Badge>
         )}
+        {listing.status === "out_of_stock" && (
+          <Badge className="absolute top-3 left-3 bg-destructive text-destructive-foreground">
+            Out of Stock
+          </Badge>
+        )}
+        <Button
+          variant="ghost"
+          size="icon"
+          className="absolute bottom-3 right-3 bg-background/80 hover:bg-background"
+          onClick={toggleFavorite}
+        >
+          <Heart className={`w-5 h-5 ${isFavorite ? "fill-primary text-primary" : "text-foreground"}`} />
+        </Button>
       </div>
 
       <CardHeader className="pb-3">
@@ -78,7 +156,10 @@ export const ListingCard = ({ listing, onViewDetails, showActions = true }: List
         
         {/* Seller Info - More Prominent */}
         {listing.farmer && (
-          <div className="bg-muted/50 rounded-lg p-3 mt-2 space-y-2">
+          <div 
+            className="bg-muted/50 rounded-lg p-3 mt-2 space-y-2 cursor-pointer hover:bg-muted/70 transition-colors"
+            onClick={() => navigate(`/farmer/${listing.farmer_id}`)}
+          >
             <div className="flex items-center gap-2">
               <div className="w-8 h-8 rounded-full bg-primary/10 flex items-center justify-center">
                 <User className="w-4 h-4 text-primary" />

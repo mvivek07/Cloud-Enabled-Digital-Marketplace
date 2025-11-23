@@ -88,6 +88,7 @@ export type Database = {
       }
       farmers: {
         Row: {
+          bio: string | null
           cooperative_id: string | null
           created_at: string
           farm_name: string
@@ -100,6 +101,7 @@ export type Database = {
           verified: boolean | null
         }
         Insert: {
+          bio?: string | null
           cooperative_id?: string | null
           created_at?: string
           farm_name: string
@@ -112,6 +114,7 @@ export type Database = {
           verified?: boolean | null
         }
         Update: {
+          bio?: string | null
           cooperative_id?: string | null
           created_at?: string
           farm_name?: string
@@ -124,6 +127,45 @@ export type Database = {
           verified?: boolean | null
         }
         Relationships: []
+      }
+      favorites: {
+        Row: {
+          created_at: string | null
+          farmer_id: string | null
+          id: string
+          listing_id: string | null
+          user_id: string
+        }
+        Insert: {
+          created_at?: string | null
+          farmer_id?: string | null
+          id?: string
+          listing_id?: string | null
+          user_id: string
+        }
+        Update: {
+          created_at?: string | null
+          farmer_id?: string | null
+          id?: string
+          listing_id?: string | null
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "favorites_farmer_id_fkey"
+            columns: ["farmer_id"]
+            isOneToOne: false
+            referencedRelation: "farmers"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "favorites_listing_id_fkey"
+            columns: ["listing_id"]
+            isOneToOne: false
+            referencedRelation: "listings"
+            referencedColumns: ["id"]
+          },
+        ]
       }
       listings: {
         Row: {
