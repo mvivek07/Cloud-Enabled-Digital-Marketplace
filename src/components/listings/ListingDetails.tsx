@@ -71,11 +71,22 @@ export const ListingDetails = ({ listingId, currentUserId }: ListingDetailsProps
 
   const fetchRatings = async () => {
     try {
+      // First get the listing to find the farmer_id
+      const { data: listingData } = await supabase
+        .from("listings")
+        .select("farmer_id")
+        .eq("id", listingId)
+        .single();
+
+      if (!listingData) return;
+
+      // Get ratings for this specific farmer
       const { data } = await supabase
         .from("ratings")
-        .select("*, profiles(*)")
+        .select("*, profiles(*), order:orders!inner(listing_id, listing:listings!inner(farmer_id))")
+        .eq("rated_user_id", listingData.farmer_id)
         .order("created_at", { ascending: false })
-        .limit(5);
+        .limit(10);
 
       if (data) setRatings(data);
     } catch (error) {
