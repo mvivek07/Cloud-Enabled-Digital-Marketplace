@@ -1,14 +1,62 @@
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
-import { Package, MapPin, Clock, DollarSign } from "lucide-react";
+import { Button } from "@/components/ui/button";
+import { Package, MapPin, Clock, DollarSign, Check, Truck } from "lucide-react";
 import { format } from "date-fns";
+import { supabase } from "@/integrations/supabase/client";
+import { toast } from "sonner";
+import { useState } from "react";
 
 interface OrderCardProps {
   order: any;
   type: "buyer" | "farmer";
+  onUpdate?: () => void;
 }
 
-export const OrderCard = ({ order, type }: OrderCardProps) => {
+export const OrderCard = ({ order, type, onUpdate }: OrderCardProps) => {
+  const [loading, setLoading] = useState(false);
+
+  const handleApprove = async () => {
+    setLoading(true);
+    try {
+      const { error } = await supabase
+        .from("orders")
+        .update({ status: "confirmed" })
+        .eq("id", order.id);
+
+      if (error) throw error;
+
+      toast.success("Order approved!");
+      onUpdate?.();
+    } catch (error) {
+      toast.error("Failed to approve order");
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const handleComplete = async () => {
+    setLoading(true);
+    try {
+      const { error } = await supabase
+        .from("orders")
+        .update({ 
+          status: "completed",
+          pickup_time: new Date().toISOString()
+        })
+        .eq("id", order.id);
+
+      if (error) throw error;
+
+      toast.success("Order marked as delivered!");
+      onUpdate?.();
+    } catch (error) {
+      toast.error("Failed to complete order");
+    } finally {
+      setLoading(false);
+    }
+  };
+
   const getStatusColor = (status: string) => {
     switch (status) {
       case "pending":
@@ -89,6 +137,34 @@ export const OrderCard = ({ order, type }: OrderCardProps) => {
         <div className="text-xs text-muted-foreground pt-2 border-t">
           Ordered: {format(new Date(order.created_at), "MMM dd, yyyy")}
         </div>
+
+        {type === "farmer" && (
+          <div className="flex gap-2 mt-4">
+            {order.status === "pending" && (
+              <Button 
+                onClick={handleApprove} 
+                disabled={loading}
+                size="sm"
+                className="flex-1"
+              >
+                <Check className="w-4 h-4 mr-1" />
+                Approve
+              </Button>
+            )}
+            {order.status === "confirmed" && (
+              <Button 
+                onClick={handleComplete} 
+                disabled={loading}
+                size="sm"
+                variant="secondary"
+                className="flex-1"
+              >
+                <Truck className="w-4 h-4 mr-1" />
+                Mark Delivered
+              </Button>
+            )}
+          </div>
+        )}
       </CardContent>
     </Card>
   );

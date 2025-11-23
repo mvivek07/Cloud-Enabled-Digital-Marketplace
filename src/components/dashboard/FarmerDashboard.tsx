@@ -6,7 +6,18 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/u
 import { ListingForm } from "@/components/listings/ListingForm";
 import { ListingCard } from "@/components/listings/ListingCard";
 import { OrderCard } from "@/components/orders/OrderCard";
-import { Plus, Sprout, Package, TrendingUp } from "lucide-react";
+import { Plus, Sprout, Package, TrendingUp, Trash2 } from "lucide-react";
+import { toast } from "sonner";
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+} from "@/components/ui/alert-dialog";
 
 interface FarmerDashboardProps {
   userId?: string;
@@ -22,6 +33,7 @@ const FarmerDashboard = ({ userId }: FarmerDashboardProps) => {
   const [farmerId, setFarmerId] = useState<string>("");
   const [listings, setListings] = useState<any[]>([]);
   const [orders, setOrders] = useState<any[]>([]);
+  const [deleteListingId, setDeleteListingId] = useState<string | null>(null);
 
   useEffect(() => {
     if (userId) {
@@ -120,6 +132,32 @@ const FarmerDashboard = ({ userId }: FarmerDashboardProps) => {
     fetchOrders();
   };
 
+  const handleDeleteListing = async () => {
+    if (!deleteListingId) return;
+
+    try {
+      const { error } = await supabase
+        .from("listings")
+        .delete()
+        .eq("id", deleteListingId);
+
+      if (error) throw error;
+
+      toast.success("Listing deleted successfully");
+      fetchStats();
+      fetchListings();
+    } catch (error) {
+      toast.error("Failed to delete listing");
+    } finally {
+      setDeleteListingId(null);
+    }
+  };
+
+  const handleOrderUpdate = () => {
+    fetchStats();
+    fetchOrders();
+  };
+
   return (
     <div className="space-y-6">
       <div className="flex items-center justify-between">
@@ -165,7 +203,7 @@ const FarmerDashboard = ({ userId }: FarmerDashboardProps) => {
           {orders.length > 0 ? (
             <div className="grid md:grid-cols-2 lg:grid-cols-3 gap-4">
               {orders.map((order) => (
-                <OrderCard key={order.id} order={order} type="farmer" />
+                <OrderCard key={order.id} order={order} type="farmer" onUpdate={handleOrderUpdate} />
               ))}
             </div>
           ) : (
@@ -188,11 +226,20 @@ const FarmerDashboard = ({ userId }: FarmerDashboardProps) => {
           {listings.length > 0 ? (
             <div className="grid md:grid-cols-2 lg:grid-cols-3 gap-4">
               {listings.map((listing) => (
-                <ListingCard
-                  key={listing.id}
-                  listing={listing}
-                  showActions={false}
-                />
+                <div key={listing.id} className="relative group">
+                  <ListingCard
+                    listing={listing}
+                    showActions={false}
+                  />
+                  <Button
+                    variant="destructive"
+                    size="icon"
+                    className="absolute top-2 right-2 opacity-0 group-hover:opacity-100 transition-opacity shadow-lg"
+                    onClick={() => setDeleteListingId(listing.id)}
+                  >
+                    <Trash2 className="w-4 h-4" />
+                  </Button>
+                </div>
               ))}
             </div>
           ) : (
@@ -214,6 +261,24 @@ const FarmerDashboard = ({ userId }: FarmerDashboardProps) => {
           <ListingForm farmerId={farmerId} onSuccess={handleListingSuccess} />
         </DialogContent>
       </Dialog>
+
+      {/* Delete Confirmation Dialog */}
+      <AlertDialog open={!!deleteListingId} onOpenChange={() => setDeleteListingId(null)}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>Delete Listing</AlertDialogTitle>
+            <AlertDialogDescription>
+              Are you sure you want to delete this listing? This action cannot be undone.
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel>Cancel</AlertDialogCancel>
+            <AlertDialogAction onClick={handleDeleteListing} className="bg-destructive text-destructive-foreground hover:bg-destructive/90">
+              Delete
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
     </div>
   );
 };
