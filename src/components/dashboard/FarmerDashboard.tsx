@@ -47,15 +47,24 @@ const FarmerDashboard = ({ userId }: FarmerDashboardProps) => {
 
   const fetchStats = async () => {
     try {
+      console.log("Fetching stats for userId:", userId);
+      
       // Get farmer profile
-      const { data: farmerData } = await supabase
+      const { data: farmerData, error: farmerError } = await supabase
         .from("farmers")
         .select("id")
         .eq("user_id", userId)
         .single();
 
-      if (!farmerData) return;
+      console.log("Farmer data:", { farmerData, farmerError });
+
+      if (!farmerData) {
+        console.error("No farmer profile found for user:", userId);
+        return;
+      }
+      
       setFarmerId(farmerData.id);
+      console.log("Farmer ID set to:", farmerData.id);
 
       // Get listings count
       const { count: listingsCount } = await supabase
@@ -160,22 +169,43 @@ const FarmerDashboard = ({ userId }: FarmerDashboardProps) => {
     fetchOrders();
   };
 
-  const toggleStockStatus = async (listingId: string, currentStatus: string) => {
+  const toggleStockStatus = async (listingId: string, currentStatus: string | null) => {
+    if (!farmerId) {
+      toast.error("Farmer profile not loaded. Please refresh the page.");
+      return;
+    }
+
     try {
-      const newStatus = currentStatus === "available" ? "out_of_stock" : "available";
+      // Default to "available" if status is null or undefined
+      const safeCurrentStatus = currentStatus || "available";
+      const newStatus = safeCurrentStatus === "available" ? "out_of_stock" : "available";
       
-      const { error } = await supabase
+      console.log("Toggling stock status:", { listingId, currentStatus: safeCurrentStatus, newStatus, farmerId });
+      
+      const { data, error } = await supabase
         .from("listings")
         .update({ status: newStatus })
-        .eq("id", listingId);
+        .eq("id", listingId)
+        .eq("farmer_id", farmerId)
+        .select();
 
-      if (error) throw error;
+      console.log("Update result:", { data, error });
+
+      if (error) {
+        console.error("Stock update error details:", error);
+        throw error;
+      }
+
+      if (!data || data.length === 0) {
+        throw new Error("No listing was updated. Please check if this listing belongs to you.");
+      }
 
       toast.success(newStatus === "out_of_stock" ? "Marked as out of stock" : "Marked as available");
       fetchListings();
       fetchStats();
-    } catch (error) {
-      toast.error("Failed to update stock status");
+    } catch (error: any) {
+      console.error("Failed to update stock status:", error);
+      toast.error(error.message || "Failed to update stock status");
     }
   };
 
@@ -272,7 +302,7 @@ const FarmerDashboard = ({ userId }: FarmerDashboardProps) => {
                     <Switch
                       id={`stock-${listing.id}`}
                       checked={listing.status === "available"}
-                      onCheckedChange={() => toggleStockStatus(listing.id, listing.status)}
+                      onCheckedChange={() => toggleStockStatus(listing.id, listing.status || "available")}
                     />
                   </div>
                 </div>
