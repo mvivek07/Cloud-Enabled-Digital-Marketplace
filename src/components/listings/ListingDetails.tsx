@@ -4,6 +4,8 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Separator } from "@/components/ui/separator";
+import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
+import { OrderForm } from "@/components/orders/OrderForm";
 import { MapPin, Calendar, Package, Star, User, MessageSquare } from "lucide-react";
 import { format } from "date-fns";
 import { toast } from "sonner";
@@ -18,11 +20,28 @@ export const ListingDetails = ({ listingId, currentUserId }: ListingDetailsProps
   const [farmer, setFarmer] = useState<any>(null);
   const [ratings, setRatings] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
+  const [showOrderForm, setShowOrderForm] = useState(false);
+  const [buyerId, setBuyerId] = useState<string>("");
 
   useEffect(() => {
     fetchListingDetails();
     fetchRatings();
+    fetchBuyerId();
   }, [listingId]);
+
+  const fetchBuyerId = async () => {
+    try {
+      const { data } = await supabase
+        .from("buyers")
+        .select("id")
+        .eq("user_id", currentUserId)
+        .single();
+      
+      if (data) setBuyerId(data.id);
+    } catch (error) {
+      console.error("Error fetching buyer ID:", error);
+    }
+  };
 
   const fetchListingDetails = async () => {
     try {
@@ -173,7 +192,12 @@ export const ListingDetails = ({ listingId, currentUserId }: ListingDetailsProps
             </div>
           )}
 
-          <Button className="w-full" size="lg">
+          <Button 
+            className="w-full" 
+            size="lg"
+            onClick={() => setShowOrderForm(true)}
+            disabled={!buyerId}
+          >
             Place Order
           </Button>
         </CardContent>
@@ -230,6 +254,26 @@ export const ListingDetails = ({ listingId, currentUserId }: ListingDetailsProps
           )}
         </CardContent>
       </Card>
+
+      {/* Order Form Dialog */}
+      <Dialog open={showOrderForm} onOpenChange={setShowOrderForm}>
+        <DialogContent className="max-w-2xl max-h-[90vh] overflow-y-auto">
+          <DialogHeader>
+            <DialogTitle>Place Order</DialogTitle>
+          </DialogHeader>
+          {listing && buyerId && (
+            <OrderForm
+              listing={listing}
+              farmerId={listing.farmer_id}
+              buyerId={buyerId}
+              onSuccess={() => {
+                setShowOrderForm(false);
+                toast.success("Order placed successfully!");
+              }}
+            />
+          )}
+        </DialogContent>
+      </Dialog>
     </div>
   );
 };
