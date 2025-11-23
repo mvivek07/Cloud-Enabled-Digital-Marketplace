@@ -1,11 +1,14 @@
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
-import { Package, MapPin, Clock, DollarSign, Check, Truck } from "lucide-react";
+import { Package, MapPin, Clock, DollarSign, Check, Truck, Star } from "lucide-react";
 import { format } from "date-fns";
 import { supabase } from "@/integrations/supabase/client";
 import { toast } from "sonner";
 import { useState, useEffect } from "react";
+import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
+import { Textarea } from "@/components/ui/textarea";
+import { Label } from "@/components/ui/label";
 
 interface OrderCardProps {
   order: any;
@@ -15,6 +18,35 @@ interface OrderCardProps {
 
 export const OrderCard = ({ order, type, onUpdate }: OrderCardProps) => {
   const [loading, setLoading] = useState(false);
+  const [showReviewDialog, setShowReviewDialog] = useState(false);
+  const [rating, setRating] = useState(5);
+  const [review, setReview] = useState("");
+  const [hasReviewed, setHasReviewed] = useState(false);
+
+  // Check if buyer has already reviewed this order
+  useEffect(() => {
+    if (type === "buyer" && order.status === "completed") {
+      checkExistingReview();
+    }
+  }, [order.id, order.status, type]);
+
+  const checkExistingReview = async () => {
+    try {
+      const { data: userData } = await supabase.auth.getUser();
+      if (!userData.user) return;
+
+      const { data } = await supabase
+        .from("ratings")
+        .select("id")
+        .eq("order_id", order.id)
+        .eq("rater_id", userData.user.id)
+        .maybeSingle();
+
+      setHasReviewed(!!data);
+    } catch (error) {
+      console.error("Error checking review:", error);
+    }
+  };
 
   // Auto-complete order when pickup time is reached
   useEffect(() => {
@@ -75,6 +107,45 @@ export const OrderCard = ({ order, type, onUpdate }: OrderCardProps) => {
       onUpdate?.();
     } catch (error) {
       toast.error("Failed to approve order");
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const handleSubmitReview = async () => {
+    setLoading(true);
+    try {
+      const { data: userData } = await supabase.auth.getUser();
+      if (!userData.user) throw new Error("Not authenticated");
+
+      // Get farmer ID from listing
+      const { data: listingData } = await supabase
+        .from("listings")
+        .select("farmer_id")
+        .eq("id", order.listing_id)
+        .single();
+
+      if (!listingData) throw new Error("Listing not found");
+
+      const { error } = await supabase
+        .from("ratings")
+        .insert({
+          order_id: order.id,
+          rater_id: userData.user.id,
+          rated_user_id: listingData.farmer_id,
+          rating: rating,
+          review: review.trim() || null,
+        });
+
+      if (error) throw error;
+
+      toast.success("Review submitted successfully!");
+      setShowReviewDialog(false);
+      setHasReviewed(true);
+      setReview("");
+      setRating(5);
+    } catch (error: any) {
+      toast.error(error.message || "Failed to submit review");
     } finally {
       setLoading(false);
     }
@@ -217,6 +288,68 @@ export const OrderCard = ({ order, type, onUpdate }: OrderCardProps) => {
                 Mark Delivered
               </Button>
             )}
+          </div>
+        )}
+
+        {type === "buyer" && order.status === "completed" && !hasReviewed && (
+          <Dialog open={showReviewDialog} onOpenChange={setShowReviewDialog}>
+            <DialogTrigger asChild>
+              <Button size="sm" variant="outline" className="w-full mt-4">
+                <Star className="w-4 h-4 mr-2" />
+                Write Review
+              </Button>
+            </DialogTrigger>
+            <DialogContent>
+              <DialogHeader>
+                <DialogTitle>Review Your Order</DialogTitle>
+                <DialogDescription>
+                  Share your experience with {order.listing?.title}
+                </DialogDescription>
+              </DialogHeader>
+              <div className="space-y-4 py-4">
+                <div className="space-y-2">
+                  <Label>Rating</Label>
+                  <div className="flex gap-2">
+                    {[1, 2, 3, 4, 5].map((value) => (
+                      <button
+                        key={value}
+                        type="button"
+                        onClick={() => setRating(value)}
+                        className="transition-colors"
+                      >
+                        <Star
+                          className={`w-8 h-8 ${
+                            value <= rating
+                              ? "fill-primary text-primary"
+                              : "text-muted-foreground"
+                          }`}
+                        />
+                      </button>
+                    ))}
+                  </div>
+                </div>
+                <div className="space-y-2">
+                  <Label htmlFor="review">Review (Optional)</Label>
+                  <Textarea
+                    id="review"
+                    placeholder="Share your thoughts about the produce quality, farmer, etc..."
+                    value={review}
+                    onChange={(e) => setReview(e.target.value)}
+                    rows={4}
+                  />
+                </div>
+                <Button onClick={handleSubmitReview} disabled={loading} className="w-full">
+                  Submit Review
+                </Button>
+              </div>
+            </DialogContent>
+          </Dialog>
+        )}
+
+        {type === "buyer" && order.status === "completed" && hasReviewed && (
+          <div className="text-sm text-muted-foreground text-center py-2 mt-4 border-t">
+            <Star className="w-4 h-4 inline mr-1" />
+            Review submitted
           </div>
         )}
       </CardContent>

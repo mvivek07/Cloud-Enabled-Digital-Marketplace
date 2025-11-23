@@ -37,7 +37,7 @@ export default function Listings() {
     try {
       const { data, error } = await supabase
         .from("listings")
-        .select("*")
+        .select("*, farmer:farmers(farm_name, verified)")
         .eq("status", "available")
         .order("created_at", { ascending: false });
 
