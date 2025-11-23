@@ -147,7 +147,15 @@ const BuyerDashboard = ({ userId }: BuyerDashboardProps) => {
           {orders.length > 0 ? (
             <div className="grid md:grid-cols-2 lg:grid-cols-3 gap-4">
               {orders.map((order) => (
-                <OrderCard key={order.id} order={order} type="buyer" />
+                <OrderCard 
+                  key={order.id} 
+                  order={order} 
+                  type="buyer" 
+                  onUpdate={() => {
+                    fetchOrders();
+                    fetchStats();
+                  }} 
+                />
               ))}
             </div>
           ) : (
