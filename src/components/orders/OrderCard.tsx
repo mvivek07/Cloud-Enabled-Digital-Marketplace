@@ -57,14 +57,21 @@ export const OrderCard = ({ order, type, onUpdate }: OrderCardProps) => {
   const handleApprove = async () => {
     setLoading(true);
     try {
+      // Set pickup time to 30 minutes from now
+      const pickupTime = new Date();
+      pickupTime.setMinutes(pickupTime.getMinutes() + 30);
+
       const { error } = await supabase
         .from("orders")
-        .update({ status: "confirmed" })
+        .update({ 
+          status: "confirmed",
+          pickup_time: pickupTime.toISOString()
+        })
         .eq("id", order.id);
 
       if (error) throw error;
 
-      toast.success("Order approved!");
+      toast.success("Order approved! Delivery in 30 minutes.");
       onUpdate?.();
     } catch (error) {
       toast.error("Failed to approve order");
