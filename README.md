@@ -78,7 +78,7 @@ A digital platform that connects farmers directly with local businesses to sell 
 
 ```bash
 # Clone the repository
-git clone https://github.com/your-repository-url.git
+git clone https://github.com/mvivek07/Cloud-Enabled-Digital-Marketplace.git
 
 # Navigate to project folder
 cd farm-to-business-platform
