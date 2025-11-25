@@ -36,10 +36,10 @@ A digital platform that connects farmers directly with local businesses to sell 
 
 | Category | Tools |
 |----------|-------|
-| Frontend | React / HTML / CSS / JavaScript |
-| Backend | Node.js / Express / Python (optional) |
-| Database | MySQL / Firebase / MongoDB |
-| Cloud Hosting | AWS / Azure / GCP |
+| Frontend |Typescript / React / HTML / CSS / JavaScript |
+| Backend | Node.js / Express |
+| Database | PostgreSQL |
+| Cloud Hosting | Supabase |
 | Version Control | Git & GitHub |
 
 ---
