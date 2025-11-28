@@ -165,12 +165,21 @@ export const OrderForm = ({ listing, farmerId, buyerId, onSuccess }: OrderFormPr
           min="1"
           max={maxQuantity}
           value={quantity}
-          onChange={(e) => setQuantity(parseInt(e.target.value) || 1)}
+          onChange={(e) => {
+            const val = parseInt(e.target.value) || 1;
+            // Prevent exceeding available quantity
+            setQuantity(Math.min(val, maxQuantity));
+          }}
           required
         />
-        <p className="text-sm text-muted-foreground">
-          Total: ${totalPrice.toFixed(2)}
-        </p>
+        <div className="flex justify-between text-sm">
+          <span className="text-muted-foreground">
+            Total: ${totalPrice.toFixed(2)}
+          </span>
+          <span className={quantity > maxQuantity ? "text-destructive font-semibold" : "text-muted-foreground"}>
+            Max: {maxQuantity} {listing.unit}
+          </span>
+        </div>
       </div>
 
       <div className="space-y-2">
