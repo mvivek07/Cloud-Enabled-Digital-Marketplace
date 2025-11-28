@@ -175,6 +175,8 @@ export type Database = {
           farmer_id: string
           harvest_date: string | null
           id: string
+          location_lat: number | null
+          location_lng: number | null
           photos: string[] | null
           pickup_location: string | null
           price_per_unit: number
@@ -191,6 +193,8 @@ export type Database = {
           farmer_id: string
           harvest_date?: string | null
           id?: string
+          location_lat?: number | null
+          location_lng?: number | null
           photos?: string[] | null
           pickup_location?: string | null
           price_per_unit: number
@@ -207,6 +211,8 @@ export type Database = {
           farmer_id?: string
           harvest_date?: string | null
           id?: string
+          location_lat?: number | null
+          location_lng?: number | null
           photos?: string[] | null
           pickup_location?: string | null
           price_per_unit?: number

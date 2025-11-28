@@ -17,6 +17,8 @@ interface ListingFormData {
   price_per_unit: number;
   harvest_date: string;
   pickup_location: string;
+  location_lat: number;
+  location_lng: number;
   cosmetic_notes: string;
 }
 
@@ -99,6 +101,8 @@ export const ListingForm = ({ farmerId, onSuccess }: ListingFormProps) => {
         price_per_unit: data.price_per_unit,
         harvest_date: data.harvest_date,
         pickup_location: data.pickup_location,
+        location_lat: data.location_lat,
+        location_lng: data.location_lng,
         cosmetic_notes: data.cosmetic_notes,
         photos: photoUrls.length > 0 ? photoUrls : null,
         status: "available"
@@ -203,6 +207,31 @@ export const ListingForm = ({ farmerId, onSuccess }: ListingFormProps) => {
           placeholder="Farm address or collection center"
         />
         {errors.pickup_location && <p className="text-sm text-destructive">{errors.pickup_location.message}</p>}
+      </div>
+
+      <div className="grid md:grid-cols-2 gap-4">
+        <div className="space-y-2">
+          <Label htmlFor="location_lat">Latitude *</Label>
+          <Input
+            id="location_lat"
+            type="number"
+            step="any"
+            {...register("location_lat", { required: "Latitude is required" })}
+            placeholder="e.g., 12.9716"
+          />
+          {errors.location_lat && <p className="text-sm text-destructive">{errors.location_lat.message}</p>}
+        </div>
+        <div className="space-y-2">
+          <Label htmlFor="location_lng">Longitude *</Label>
+          <Input
+            id="location_lng"
+            type="number"
+            step="any"
+            {...register("location_lng", { required: "Longitude is required" })}
+            placeholder="e.g., 77.5946"
+          />
+          {errors.location_lng && <p className="text-sm text-destructive">{errors.location_lng.message}</p>}
+        </div>
       </div>
 
       <div className="space-y-2">
