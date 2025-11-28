@@ -127,21 +127,21 @@ export const OrderCard = ({ order, type, onUpdate }: OrderCardProps) => {
       const { data: userData } = await supabase.auth.getUser();
       if (!userData.user) throw new Error("Not authenticated");
 
-      // Get farmer ID from listing
+      // Get farmer user_id from listing
       const { data: listingData } = await supabase
         .from("listings")
-        .select("farmer_id")
+        .select("farmers(user_id)")
         .eq("id", order.listing_id)
         .single();
 
-      if (!listingData) throw new Error("Listing not found");
+      if (!listingData || !listingData.farmers) throw new Error("Farmer not found");
 
       const { error } = await supabase
         .from("ratings")
         .insert({
           order_id: order.id,
           rater_id: userData.user.id,
-          rated_user_id: listingData.farmer_id,
+          rated_user_id: listingData.farmers.user_id,
           rating: rating,
           review: review.trim() || null,
         });
@@ -154,6 +154,7 @@ export const OrderCard = ({ order, type, onUpdate }: OrderCardProps) => {
       setReview("");
       setRating(5);
     } catch (error: any) {
+      console.error("Rating error:", error);
       toast.error(error.message || "Failed to submit review");
     } finally {
       setLoading(false);
