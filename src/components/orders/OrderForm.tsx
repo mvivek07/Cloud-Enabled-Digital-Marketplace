@@ -59,31 +59,39 @@ export const OrderForm = ({ listing, farmerId, buyerId, onSuccess }: OrderFormPr
         return;
       }
 
-      // Get farmer location (optional for distance calculation)
-      const { data: farmerData } = await supabase
-        .from("farmers")
-        .select("location_lat, location_lng")
-        .eq("id", farmerId)
-        .maybeSingle();
-
       const buyerLat = parseFloat(locationLat);
       const buyerLng = parseFloat(locationLng);
-      let pickupTime: Date | null = null;
-      let distance: number | null = null;
 
-      // Calculate distance and time if farmer location is available
-      if (farmerData?.location_lat && farmerData?.location_lng) {
-        distance = calculateDistance(
-          farmerData.location_lat,
-          farmerData.location_lng,
-          buyerLat,
-          buyerLng
-        );
-
-        const estimatedMinutes = estimateDeliveryTime(distance);
-        pickupTime = new Date();
-        pickupTime.setMinutes(pickupTime.getMinutes() + estimatedMinutes);
+      // Check if listing has location coordinates
+      if (!listing.location_lat || !listing.location_lng) {
+        toast.error("This product doesn't have location information. Cannot calculate delivery.");
+        setLoading(false);
+        return;
       }
+
+      // Calculate distance
+      const distance = calculateDistance(
+        listing.location_lat,
+        listing.location_lng,
+        buyerLat,
+        buyerLng
+      );
+
+      // Check if distance is within acceptable range (50 km)
+      const MAX_DELIVERY_DISTANCE = 50; // km
+      if (distance > MAX_DELIVERY_DISTANCE) {
+        toast.error(
+          `Sorry, this farmer's product is too far away (${distance.toFixed(1)} km). We can only deliver within ${MAX_DELIVERY_DISTANCE} km.`,
+          { duration: 6000 }
+        );
+        setLoading(false);
+        return;
+      }
+
+      // Calculate estimated delivery time
+      const estimatedMinutes = estimateDeliveryTime(distance);
+      const pickupTime = new Date();
+      pickupTime.setMinutes(pickupTime.getMinutes() + estimatedMinutes);
 
       // Create order
       const totalPrice = quantity * listing.price_per_unit;
@@ -96,7 +104,7 @@ export const OrderForm = ({ listing, farmerId, buyerId, onSuccess }: OrderFormPr
           price_per_unit: listing.price_per_unit,
           total_price: totalPrice,
           delivery_address: deliveryAddress,
-          pickup_time: pickupTime?.toISOString() || null,
+          pickup_time: pickupTime.toISOString(),
           status: "pending"
         });
 
@@ -112,15 +120,10 @@ export const OrderForm = ({ listing, farmerId, buyerId, onSuccess }: OrderFormPr
         })
         .eq("id", buyerId);
 
-      if (distance !== null && pickupTime !== null) {
-        const estimatedMinutes = Math.ceil((pickupTime.getTime() - new Date().getTime()) / 60000);
-        toast.success(
-          `Order placed successfully! Estimated delivery in ${estimatedMinutes} minutes (${distance.toFixed(1)} km away)`,
-          { duration: 5000 }
-        );
-      } else {
-        toast.success("Order placed successfully!", { duration: 5000 });
-      }
+      toast.success(
+        `Order placed successfully! Estimated delivery in ${estimatedMinutes} minutes (${distance.toFixed(1)} km away)`,
+        { duration: 5000 }
+      );
 
       onSuccess();
     } catch (error: any) {
